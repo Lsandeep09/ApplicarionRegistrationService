@@ -1,15 +1,19 @@
-package com.sandy.repository.service;
+package com.sandy.service;
 
 import com.sandy.DTO.CitizenAppRegistrationInputs;
+import com.sandy.Exception.InvalidSSNException;
 import com.sandy.entity.CitizenAppRegistrationEntity;
 import com.sandy.repository.IApplicationRegistrationRepository;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 @Service
 public class CitizenApplicationRegistrationServiceImpl implements ICitizenApplicationRegistrationService{
@@ -17,8 +21,10 @@ public class CitizenApplicationRegistrationServiceImpl implements ICitizenApplic
     @Autowired
     private IApplicationRegistrationRepository citizenRepo;
 
+    /*@Autowired
+    private RestTemplate template;*/
     @Autowired
-    private RestTemplate template;
+    private WebClient client;
 
     @Value("${ar.ssa-web.url}")
     private String endpointUrl;
@@ -30,12 +36,20 @@ public class CitizenApplicationRegistrationServiceImpl implements ICitizenApplic
 
 
     @Override
-    public Integer registerCitizenApplication(CitizenAppRegistrationInputs inputs) {
-        //perform WebService call to check wheather SSN is valid or not and to get the state name
-        ResponseEntity<String> response = template.exchange(endpointUrl, HttpMethod.GET,null,String.class,inputs.getSsn());
+    public Integer registerCitizenApplication(CitizenAppRegistrationInputs inputs)throws InvalidSSNException {
+        /*//perform WebService call to check whether SSN is valid or not and to get the state name
+          ResponseEntity<String> response = template.exchange(endpointUrl, HttpMethod.GET,null,String.class,inputs.getSsn());*/
+
+
+         //perform WebService call to check whether SSN is valid or not and to get the state name
+
+
         //get stateName
-        String stateName=response.getBody();
-        //register citizen if he belongs to california state(CA)
+        Mono<String>response=client.get().uri(endpointUrl,inputs.getSsn()).retrieve()
+                    .onStatus(HttpStatus.BAD_REQUEST::equals,res->res.bodyToMono(String.class).map(ex->new InvalidSSNException("invalid ssn"))).bodyToMono(String.class);
+        String stateName=response.block();
+
+        //register citizen if he belongs to California state(CA)
         if(stateName.equalsIgnoreCase(targetState)) {
             //prepare the Entity object
             CitizenAppRegistrationEntity entity = new CitizenAppRegistrationEntity();
@@ -47,6 +61,6 @@ public class CitizenApplicationRegistrationServiceImpl implements ICitizenApplic
             return appId;
         }
 
-        return 0;
+        throw new InvalidSSNException("invalid SSN");
     }
 }
