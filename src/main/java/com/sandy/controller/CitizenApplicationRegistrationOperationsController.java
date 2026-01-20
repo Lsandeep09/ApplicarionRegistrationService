@@ -38,12 +38,17 @@ public class CitizenApplicationRegistrationOperationsController {
 
     //webclient  code removing the try catch block
 
-    @PostMapping("/save")
+    /*@PostMapping("/save")
     public ResponseEntity<String> saveCitizenApplication(@RequestBody CitizenAppRegistrationInputs inputs)throws Exception {
 
             //use service
             int appId = registrationService.registerCitizenApplication(inputs);
                 return new ResponseEntity<String>("Citizen Application is registred with the Id::"+appId, HttpStatus.CREATED);
 
+    }*/
+    @PostMapping("/save")
+    public String saveCitizenApplication(@RequestBody CitizenAppRegistrationInputs inputs)throws Exception {
+        int appId = registrationService.registerCitizenApplication(inputs);
+        return "Citizen Application is registered with the Id::"+appId;
     }
 }
